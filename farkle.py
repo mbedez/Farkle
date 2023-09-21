@@ -4,6 +4,7 @@ import pygame_menu
 
 
 class Dice:
+
     def __init__(self):
         self.value = 0
         self.held = False
@@ -14,6 +15,7 @@ class Dice:
 
 
 class Game:
+
     def __init__(self):
         self.dices = [Dice() for i in range(6)]
         for dice in self.dices:
@@ -64,14 +66,15 @@ class Game:
         # On s'occupe d'abord des brelans, carrés, etc.
         # cas particulier du 1
         if nb_of_each_values[0] >= 3:
-            self.throw_score += 1000*(2**(nb_of_each_values[0]-3))
+            self.throw_score += 1000 * (2**(nb_of_each_values[0] - 3))
             for _i in range(nb_of_each_values[0]):
                 nb_of_each_values[0] -= 1
 
         # cas général
         for i in range(1, 6):
             if nb_of_each_values[i] >= 3:
-                self.throw_score += (i+1)*100*(2**(nb_of_each_values[i]-3))
+                self.throw_score += (i + 1) * 100 * (2**(nb_of_each_values[i] -
+                                                         3))
                 for _i in range(nb_of_each_values[i]):
                     nb_of_each_values[i] -= 1
 
@@ -125,15 +128,20 @@ class Game:
 
 
 class Player:
+
     def __init__(self):
         self.score = 0
 
 
 class GUI:
+
     def __init__(self, app):
         self.dimensions = [(640, 480), (800, 600), (1024, 768), (1280, 1024)]
         self.width = self.dimensions[0][0]
         self.height = self.dimensions[0][1]
+
+        self.circle_pos = 0
+        self.line_pos = 0
 
         self.J1_input = None
         self.J2_input = None
@@ -147,11 +155,20 @@ class GUI:
         self.myFont = pygame.font.SysFont("Times New Roman", 30)
         self.white = (255, 255, 255)
 
-        self.dices = [pygame.image.load(f"assets/dice{i}.png").convert_alpha()
-                      for i in range(1, 7)]
+        self.dices_images = [
+            pygame.image.load(f"assets/dice{i}.png").convert_alpha()
+            for i in range(1, 7)
+        ]
+        self.dices = [''] * 6
 
         self.bg_image = pygame.image.load("assets/bg.jpg").convert()
         self.bg = None
+
+        self.line_image = pygame.image.load("assets/line.png").convert_alpha()
+        self.circle_image = pygame.image.load(
+            "assets/circle.png").convert_alpha()
+        self.line = None
+        self.circle = None
 
         self.resize(self.resolution_choice)
 
@@ -188,12 +205,18 @@ class GUI:
         self.fenetre = pygame.display.set_mode((self.width, self.height))
 
         for i in range(6):
-            self.dices[i] = pygame.transform.scale(self.dices[i],
-                                                   (self.width/640*50,
-                                                   self.width/640*50))
+            self.dices[i] = pygame.transform.scale(
+                self.dices_images[i],
+                (self.width / 640 * 50, self.width / 640 * 50))
 
         self.bg = pygame.transform.scale(self.bg_image,
                                          (self.width, self.height))
+
+        self.line = pygame.transform.scale(
+            self.line_image, (self.width / 640 * 50, self.width / 640 * 5))
+
+        self.circle = pygame.transform.scale(
+            self.circle_image, (self.width / 640 * 50, self.width / 640 * 50))
 
     def reset_screen(self):
         self.fenetre.blit(self.bg, (0, 0))
@@ -212,7 +235,7 @@ class GUI:
         text = str(self.J2_input.get_value())
         text_render = self.myFont.render(text, True, self.white)
         self.fenetre.blit(text_render,
-                          (self.width-self.get_len_string(text)-20, 5))
+                          (self.width - self.get_len_string(text) - 20, 5))
 
         # Affichage des scores des joueurs
         text = "Score :" + str(self.app.game.player1.score) + '/' + str(
@@ -224,7 +247,30 @@ class GUI:
             self.app.game.target_score)
         text_render = self.myFont.render(text, True, self.white)
         self.fenetre.blit(text_render,
-                          (self.width-self.get_len_string(text)-20, 50))
+                          (self.width - self.get_len_string(text) - 20, 50))
+
+    def display_dice(self):
+        # Affichage des dés
+        for i in range(6):
+            if not self.app.game.dices[i].held:
+                self.fenetre.blit(self.dices[self.app.game.dices[i].value - 1],
+                                  (self.width * 0.15 +
+                                   (self.width / 8.5) * i, self.height / 2))
+            else:
+                self.fenetre.blit(self.dices[self.app.game.dices[i].value - 1],
+                                  (self.width * 0.15 +
+                                   (self.width / 8.5) * i, self.height / 1.25))
+        pygame.display.flip()
+
+    def display_line(self, position):
+        self.fenetre.blit(self.line,
+                          (self.width * 0.15 +
+                           (self.width / 8.5) * position, self.height / 1.6))
+
+    def display_circle(self, position):
+        self.fenetre.blit(self.circle,
+                          (self.width * 0.15 +
+                           (self.width / 8.5) * position, self.height / 2))
 
     def create_menu(self):
         self.menu.add.button("Jouer", self.play_button)
@@ -236,9 +282,7 @@ class GUI:
                                                  minchar=1,
                                                  maxchar=10)
         self.target_score_input = self.menu.add.text_input(
-                                                    "Score à atteindre : ",
-                                                    default="10000",
-                                                    maxchar=5)
+            "Score à atteindre : ", default="10000", maxchar=5)
 
         self.resolution_choice = self.menu.add.selector(
             "Résolution : ",
@@ -249,8 +293,8 @@ class GUI:
         self.GotoMenu()
 
     def GotoMenu(self):
-        self.fenetre = pygame.display.set_mode((
-            self.dimensions[0][0], self.dimensions[0][1]))
+        self.fenetre = pygame.display.set_mode(
+            (self.dimensions[0][0], self.dimensions[0][1]))
         self.menu.mainloop(self.fenetre)
 
     def gui_loop(self):
@@ -275,12 +319,11 @@ class GUI:
 
                         self.display_hud()
 
-                        # Affichage des dés
-                        for i in range(6):
-                            self.fenetre.blit(
-                                self.dices[self.app.game.dices[i].value-1],
-                                (self.width*0.2+75*(i), self.height/2))
-                        pygame.display.flip()
+                        self.display_dice()
+
+                        self.display_line(self.line_pos)
+
+                        self.display_circle(self.circle_pos)
 
             pygame.display.update()
 
@@ -288,6 +331,7 @@ class GUI:
 
 
 class App:
+
     def __init__(self):
         self.game = Game()
         self.gui = GUI(self)
